@@ -1,6 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { auth, db } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { saveUserPreferences } from '../lib/savePreferences';
 
 const symbols = [
   { label: 'Bitcoin (BTC)', value: 'BINANCE:BTCUSDT' },
@@ -12,13 +16,13 @@ const symbols = [
 
 export default function TradingViewChart() {
   const [selectedSymbol, setSelectedSymbol] = useState(symbols[0].value);
+  const [user, setUser] = useState(null);
   const containerId = 'tradingview_dynamic';
   const containerRef = useRef(null);
 
   const loadWidget = (symbol) => {
     if (!window.TradingView) return;
-
-    containerRef.current.innerHTML = ''; // pulisce il div
+    containerRef.current.innerHTML = '';
 
     new window.TradingView.widget({
       autosize: true,
@@ -32,19 +36,45 @@ export default function TradingViewChart() {
     });
   };
 
+  // ✅ Carica l'utente e la preferenza salvata
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/tv.js';
     script.async = true;
     script.onload = () => loadWidget(selectedSymbol);
     document.head.appendChild(script);
+
+    onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+
+      if (firebaseUser) {
+        const ref = doc(db, 'users', firebaseUser.uid);
+        const snap = await getDoc(ref);
+        const saved = snap.data()?.preferences?.selectedCoin;
+        if (saved) {
+          setSelectedSymbol(saved); // solo carica
+        }
+      }
+    });
   }, []);
 
+  // ✅ Cambia il grafico ogni volta che cambia selectedSymbol
   useEffect(() => {
     if (window.TradingView) {
       loadWidget(selectedSymbol);
     }
   }, [selectedSymbol]);
+
+  // ✅ Salva solo se l’utente cambia la coin manualmente
+  const handleChange = async (e) => {
+    const newSymbol = e.target.value;
+    setSelectedSymbol(newSymbol);
+    if (user) {
+      await saveUserPreferences(user.uid, {
+        selectedCoin: newSymbol
+      });
+    }
+  };
 
   return (
     <div className="p-4 bg-white rounded shadow text-gray-800">
@@ -52,7 +82,7 @@ export default function TradingViewChart() {
 
       <select
         value={selectedSymbol}
-        onChange={(e) => setSelectedSymbol(e.target.value)}
+        onChange={handleChange}
         className="mb-4 p-2 border rounded"
       >
         {symbols.map((coin) => (
