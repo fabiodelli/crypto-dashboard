@@ -7,7 +7,7 @@ import TradingViewChart from '../components/TradingViewChart';
 import AuthForm from '../components/AuthForm';
 import Header from '../components/Header';
 import FearGreedWidget from '../components/widgets/FearGreedWidget';
-
+import CryptoNews from '@/components/CryptoNews';
 
 
 
@@ -20,8 +20,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-5">
         
-        <BitcoinPrice />
-        <EthereumPrice />
+        <CryptoNews />
         <FearGreedWidget />
   
       </div>
